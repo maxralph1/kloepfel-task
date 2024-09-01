@@ -52,7 +52,10 @@ class HandelsRegister:
         ]
 
         self.cachedir = pathlib.Path("cache")
-        self.cachedir.mkdir(parents=True, exist_ok=True)
+        self.cachedir.mkdir(parents=True, exist_ok=True) 
+
+        self.externalexceldir = pathlib.Path("external_excel")
+        self.externalexceldir.mkdir(parents=True, exist_ok=True) 
 
     def open_startpage(self):
         self.browser.open(
@@ -62,41 +65,111 @@ class HandelsRegister:
     def companyname2cachename(self, companyname):
         # map a companyname to a filename, that caches the downloaded HTML, so re-running this script touches the
         # webserver less often.
-        return self.cachedir / companyname
+        return self.cachedir / companyname 
+    
+    def externalexcelname(self, filename):
+        return self.externalexceldir / filename
 
-    def search_company(self):
-        cachename = self.companyname2cachename(self.args.schlagwoerter)
-        if self.args.force == False and cachename.exists():
-            with open(cachename, "r") as f:
-                html = f.read()
-                print("return cached content for %s" % self.args.schlagwoerter)
-        else:
-            self.browser.open(
-                "https://www.handelsregister.de/rp_web/erweitertesuche.xhtml"
-            )
-            if self.args.debug == True:
-                print(self.browser.title())
+    def search_company_ies(self): 
+        # Catch the situation if there's more than one company
+        # Check for external excel file with company names
+        externalexcelfilename = self.externalexcelname(self.args.externalExcel) 
 
-            self.browser.select_form(name="form")
+        if self.args.loadExternalExcel == "true" and externalexcelfilename.exists(): 
 
-            self.browser["form:schlagwoerter"] = self.args.schlagwoerter
-            so_id = schlagwortOptionen.get(self.args.schlagwortOptionen)
+            print("Please note that depending on the number of companies you have provided on the Excel sheet, it would take approximately 30 seconds to retrieve and process their detailed director(s) information for each company. Please close all Excel files while running this program.") 
 
-            self.browser["form:schlagwortOptionen"] = [str(so_id)]
+            if os.path.exists(externalexcelfilename):
+                # Traverse (read) the Excel file to retrieve the company names and compute on them
+                companies_list_in_excel = openpyxl.load_workbook(externalexcelfilename) 
 
-            response_result = self.browser.submit()
+                worksheet = companies_list_in_excel.active
 
-            if self.args.debug == True:
-                print(self.browser.title())
+                print("Sheet names:", companies_list_in_excel.sheetnames)
+                print("Sheet:", worksheet) 
 
-            html = response_result.read().decode("utf-8")
-            with open(cachename, "w") as f:
-                f.write(html) 
+                # cell_range = worksheet['A1'] 
 
-        return get_companies_in_searchresults(html) 
+                # print(cell_range) 
+
+                for row in worksheet.iter_rows(min_row=1, max_col=1):
+                    for cell in row:
+                        # print(cell)
+                        print(cell.value) 
+
+                        # Check "cache" folder for the company name, in case it has already been searched for
+                        cachename = self.companyname2cachename(cell.value) 
+
+                        if self.args.force == False and cachename.exists():
+                            with open(cachename, "r") as f:
+                                html = f.read()
+                                print("return cached content for %s" % cell.value) 
+                        else:
+                            self.browser.open(
+                                "https://www.handelsregister.de/rp_web/erweitertesuche.xhtml"
+                            )
+                            if self.args.debug == True:
+                                print(self.browser.title())
+
+                            self.browser.select_form(name="form")
+
+                            self.browser["form:schlagwoerter"] = cell.value
+                            so_id = schlagwortOptionen.get(self.args.schlagwortOptionen)
+
+                            self.browser["form:schlagwortOptionen"] = [str(so_id)]
+
+                            response_result = self.browser.submit()
+
+                            if self.args.debug == True:
+                                print(self.browser.title())
+
+                            html = response_result.read().decode("utf-8")
+                            with open(cachename, "w") as f:
+                                f.write(html) 
+
+                        get_companies_in_searchresults(html) 
+
+
+            else:
+                print("File not found. Check that you got the file name correctly and that it is placed in the \"external_excel\" folder.") 
+
+
+
+        elif self.args.loadExternalExcel == "false": 
+            # Check "cache" folder for the company name, in case it has already been searched for
+            cachename = self.companyname2cachename(self.args.schlagwoerter) 
+
+            if self.args.force == False and cachename.exists():
+                with open(cachename, "r") as f:
+                    html = f.read()
+                    print("return cached content for %s" % self.args.schlagwoerter)
+            else:
+                self.browser.open(
+                    "https://www.handelsregister.de/rp_web/erweitertesuche.xhtml"
+                )
+                if self.args.debug == True:
+                    print(self.browser.title())
+
+                self.browser.select_form(name="form")
+
+                self.browser["form:schlagwoerter"] = self.args.schlagwoerter
+                so_id = schlagwortOptionen.get(self.args.schlagwortOptionen)
+
+                self.browser["form:schlagwortOptionen"] = [str(so_id)]
+
+                response_result = self.browser.submit()
+
+                if self.args.debug == True:
+                    print(self.browser.title())
+
+                html = response_result.read().decode("utf-8")
+                with open(cachename, "w") as f:
+                    f.write(html) 
+
+            return get_companies_in_searchresults(html) 
+
     
 
-        # TODO catch the situation if there's more than one company?
         # TODO get all documents attached to the exact company 
 
 
@@ -201,15 +274,15 @@ def parse_result(result):
         obtain_and_parse_detailed_results(cells[2], cells[1], cells[3], cells[4])
         # 
 
-    d["history"] = [6]  # Verlauf
+    # d["history"] = [6]  # Verlauf
 
-    # Extract history if available
-    history_cells = result.find_all("td")[8:]
-    if history_cells:
-        for i in range(0, len(history_cells), 2):
-            event = history_cells[i].text.strip()
-            date = history_cells[i + 1].text.strip()
-            d["history"].append((event, date))
+    # # Extract history if available
+    # history_cells = result.find_all("td")[8:]
+    # if history_cells:
+    #     for i in range(0, len(history_cells), 2):
+    #         event = history_cells[i].text.strip()
+    #         date = history_cells[i + 1].text.strip()
+    #         d["history"].append((event, date))
 
     return d 
 
@@ -400,11 +473,18 @@ def obtain_and_parse_detailed_results(firmenname, gericht, sitz, status):
     ).text
     print(f"Gegenstand: {gegenstand}") 
 
-    vertretungsbefugnis = root.find(
+    if root.find(
         "tns:fachdatenRegister/tns:basisdatenRegister/tns:vertretung/tns:allgemeineVertretungsregelung/tns:auswahl_vertretungsbefugnis/tns:vertretungsbefugnisFreitext",
         namespaces,
-    ).text
-    print(f"Vertretungsbefugnis: {vertretungsbefugnis}")
+    ) is not None: 
+        vertretungsbefugnis = root.find(
+            "tns:fachdatenRegister/tns:basisdatenRegister/tns:vertretung/tns:allgemeineVertretungsregelung/tns:auswahl_vertretungsbefugnis/tns:vertretungsbefugnisFreitext",
+            namespaces,
+        ).text 
+        print(f"Vertretungsbefugnis: {vertretungsbefugnis}")
+    else: 
+        vertretungsbefugnis = "" 
+        print(f"Vertretungsbefugnis: {vertretungsbefugnis}") 
 
     # # Iterate over all 'company' elements
     # for company in root.findall('tns:grunddaten/tns:verfahrensdaten/tns:beteiligung/tns:beteiligter/tns:auswahl_beteiligter/tns:organisation', namespaces,):
@@ -486,11 +566,17 @@ def parse_args():
         default="true",
     )
     parser.add_argument(
-        "-lxxl",
+        "-lxxlsx",
         "--loadExternalExcel",
-        help="Keyword options: true=loads an external excel file containing names of companies.; false=do not load an external excel file containing names of companies.",
+        help="Keyword options (case-sensitive): true=loads an external excel file containing names of companies.; false=do not load an external excel file containing names of companies.",
         choices=["true", "false"],
         default="false",
+    )
+    parser.add_argument(
+        "-xxlsx",
+        "--externalExcel",
+        help="Path to the external Excel file containing names of companies prepared for search. You can also specify the filename; and the filename must have a suffix of \".xlsx\". It must be contained within the \"external_excel\" folder.",
+        default="handelsregister_query.xlsx",
     )
     parser.add_argument(
         "-o",
@@ -514,7 +600,7 @@ if __name__ == "__main__":
     args = parse_args()
     h = HandelsRegister(args)
     h.open_startpage()
-    companies = h.search_company() 
+    companies = h.search_company_ies() 
 
     if companies is not None:
         for c in companies:
