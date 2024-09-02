@@ -186,10 +186,10 @@ def get_companies_in_searchresults(html):
     return results 
 
 
-def pr_company_info(c):
-    # print(c)
-    for tag in ("name", "court", "state", "status"):
-        print("%s: %s" % (tag, c.get(tag, "-"))) 
+# def pr_company_info(c):
+#     # print(c)
+#     for tag in ("name", "court", "state", "status"):
+#         print("%s: %s" % (tag, c.get(tag, "-"))) 
 
 
 def save_to_excel(firmenname, gericht, sitz, status, bezeichnung, rechtsform, strasse, hausnummer, postleitzahl, directorArray, gegenstand, vertretungsbefugnis, filepath): 
@@ -420,22 +420,38 @@ def obtain_and_parse_detailed_results(firmenname, gericht, sitz, status):
 
     # Company Detailed Info 
 
-    bezeichnung = root.find(
+    # Bezeichnung 
+    if root.find(
         "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:bezeichnung/tns:bezeichnung.aktuell",
         namespaces,
-    ).text
-    print(f"Bezeichnung: {bezeichnung}") 
+    ) is not None: 
+        bezeichnung = root.find(
+            "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:bezeichnung/tns:bezeichnung.aktuell",
+            namespaces,
+        ).text
+        # print(f"Bezeichnung: {bezeichnung}") 
+    else: 
+        bezeichnung = ""
+        # print(f"Bezeichnung: {bezeichnung}") 
 
-    rechtsform = root.find(
+    # Rechtsform 
+    if root.find(
         "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:angabenZurRechtsform/tns:rechtsform/code",
         namespaces,
-    ).text
-    if rechtsform == "GmbH": 
-        rechtsform = "Gesellschaft mit beschränkter Haftung"
-        print(f"Rechtsform: \"Gesellschaft mit beschränkter Haftung\"")
+    ) is not None:
+        rechtsform = root.find(
+            "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:angabenZurRechtsform/tns:rechtsform/code",
+            namespaces,
+        ).text
+        if rechtsform == "GmbH": 
+            rechtsform = "Gesellschaft mit beschränkter Haftung"
+            # print(f"Rechtsform: \"Gesellschaft mit beschränkter Haftung\"")
+        else: 
+            rechtsform = ""
+            # print(f"Rechtsform: \"Unbekannt\"") 
     else: 
-        rechtsform = ""
-        print(f"Rechtsform: \"Unbekannt\"") 
+        rechtsform = "" 
+        print(f"Rechtsform: {rechtsform}") 
     
     # ort = root.find(
     #     "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:sitz/tens:ort",
@@ -443,23 +459,47 @@ def obtain_and_parse_detailed_results(firmenname, gericht, sitz, status):
     # ).text
     # print(f"Ort: {ort}")
     
-    strasse = root.find(
+    # Strasse 
+    if root.find(
         "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:anschrift/tns:strasse",
         namespaces,
-    ).text
-    print(f"Strasse: {strasse}")
+    ) is not None: 
+        strasse = root.find(
+            "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:anschrift/tns:strasse",
+            namespaces,
+        ).text
+        # print(f"Strasse: {strasse}") 
+    else: 
+        strasse = ""
+        # print(f"Strasse: {strasse}")
 
-    hausnummer = root.find(
+    # Hausnummer 
+    if root.find(
         "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:anschrift/tns:hausnummer",
         namespaces,
-    ).text
-    print(f"Hausnummer: {hausnummer}")
+    ) is not None: 
+        hausnummer = root.find(
+            "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:anschrift/tns:hausnummer",
+            namespaces,
+        ).text
+        # print(f"Hausnummer: {hausnummer}") 
+    else: 
+        hausnummer = ""
+        # print(f"Hausnummer: {hausnummer}")
 
-    postleitzahl = root.find(
+    # Postleitzahl
+    if root.find(
         "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:anschrift/tns:postleitzahl",
         namespaces,
-    ).text
-    print(f"Postleitzahl: {postleitzahl}")
+    ) is not None:
+        postleitzahl = root.find(
+            "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:anschrift/tns:postleitzahl",
+            namespaces,
+        ).text
+        # print(f"Postleitzahl: {postleitzahl}") 
+    else:
+        postleitzahl = ""
+        # print(f"Postleitzahl: {postleitzahl}")
 
     # ort = root.find(
     #     "tns:fachdatenRegister/tns:basisdatenRegister/tns:rechtstraeger/tns:anschrift/tns:ort",
@@ -467,12 +507,21 @@ def obtain_and_parse_detailed_results(firmenname, gericht, sitz, status):
     # ).text
     # print(f"Ort: {ort}")
 
-    gegenstand = root.find(
+    # Gegenstand
+    if root.find(
         "tns:fachdatenRegister/tns:basisdatenRegister/tns:gegenstand",
         namespaces,
-    ).text
-    print(f"Gegenstand: {gegenstand}") 
+    ) is not None:
+        gegenstand = root.find(
+            "tns:fachdatenRegister/tns:basisdatenRegister/tns:gegenstand",
+            namespaces,
+        ).text
+        # print(f"Gegenstand: {gegenstand}") 
+    else: 
+        gegenstand = ""
+        # print(f"Gegenstand: {gegenstand}") 
 
+    # Vertretungsbefugnis
     if root.find(
         "tns:fachdatenRegister/tns:basisdatenRegister/tns:vertretung/tns:allgemeineVertretungsregelung/tns:auswahl_vertretungsbefugnis/tns:vertretungsbefugnisFreitext",
         namespaces,
@@ -481,10 +530,10 @@ def obtain_and_parse_detailed_results(firmenname, gericht, sitz, status):
             "tns:fachdatenRegister/tns:basisdatenRegister/tns:vertretung/tns:allgemeineVertretungsregelung/tns:auswahl_vertretungsbefugnis/tns:vertretungsbefugnisFreitext",
             namespaces,
         ).text 
-        print(f"Vertretungsbefugnis: {vertretungsbefugnis}")
+        # print(f"Vertretungsbefugnis: {vertretungsbefugnis}")
     else: 
         vertretungsbefugnis = "" 
-        print(f"Vertretungsbefugnis: {vertretungsbefugnis}") 
+        # print(f"Vertretungsbefugnis: {vertretungsbefugnis}") 
 
     # # Iterate over all 'company' elements
     # for company in root.findall('tns:grunddaten/tns:verfahrensdaten/tns:beteiligung/tns:beteiligter/tns:auswahl_beteiligter/tns:organisation', namespaces,):
@@ -549,7 +598,7 @@ def parse_args():
         "-s",
         "--schlagwoerter",
         help="Search for the provided keywords",
-        default="K",
+        default="Kloepfel Consulting GmbH",
     )
     parser.add_argument(
         "-so",
@@ -603,7 +652,7 @@ if __name__ == "__main__":
     companies = h.search_company_ies() 
 
     if companies is not None:
-        for c in companies:
-            pr_company_info(c) 
+        # for c in companies:
+            # pr_company_info(c) 
             # save_to_excel(companies, args.output)
-            print(f"Ergebnisse wurden in der Datei {args.output} gespeichert.") 
+        print(f"Ergebnisse wurden in der Datei {args.output} gespeichert.") 

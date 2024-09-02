@@ -8,11 +8,8 @@ from bs4 import BeautifulSoup
 import openpyxl
 
 # Dictionaries to map arguments to values
-schlagwortOptionen = {
-    "all": 1,
-    "min": 2,
-    "exact": 3
-}
+schlagwortOptionen = {"all": 1, "min": 2, "exact": 3}
+
 
 class HandelsRegister:
     def __init__(self, args):
@@ -48,7 +45,9 @@ class HandelsRegister:
         self.cachedir.mkdir(parents=True, exist_ok=True)
 
     def open_startpage(self):
-        self.browser.open("https://www.handelsregister.de/rp_web/welcome.xhtml", timeout=10)
+        self.browser.open(
+            "https://www.handelsregister.de/rp_web/welcome.xhtml", timeout=10
+        )
 
     def companyname2cachename(self, companyname):
         # map a companyname to a filename, that caches the downloaded HTML, so re-running this script touches the
@@ -62,7 +61,9 @@ class HandelsRegister:
                 html = f.read()
                 print("return cached content for %s" % self.args.schlagwoerter)
         else:
-            self.browser.open("https://www.handelsregister.de/rp_web/erweitertesuche.xhtml")
+            self.browser.open(
+                "https://www.handelsregister.de/rp_web/erweitertesuche.xhtml"
+            )
             if self.args.debug == True:
                 print(self.browser.title())
 
@@ -84,49 +85,52 @@ class HandelsRegister:
 
         return get_companies_in_searchresults(html)
 
+
 def parse_result(result):
     cells = []
-    for cellnum, cell in enumerate(result.find_all('td')):
+    for cellnum, cell in enumerate(result.find_all("td")):
         cells.append(cell.text.strip())
 
     d = {}
-    d['court'] = cells[1]  # Gericht
-    d['name'] = cells[2]  # Firmenname
-    d['state'] = cells[3]  # Sitz
-    d['status'] = cells[4]  # Status
-    d['documents'] = cells[5]  # Dokumente
-    
-        # Extract and print the relevant portion of HTML containing "SI"
-    if 'SI' in cells[5]:
-        start_index = max(cells[5].find('SI') - 100, 0)
-        end_index = cells[5].find('SI') + 100
+    d["court"] = cells[1]  # Gericht
+    d["name"] = cells[2]  # Firmenname
+    d["state"] = cells[3]  # Sitz
+    d["status"] = cells[4]  # Status
+    d["documents"] = cells[5]  # Dokumente
+
+    # Extract and print the relevant portion of HTML containing "SI"
+    if "SI" in cells[5]:
+        start_index = max(cells[5].find("SI") - 100, 0)
+        end_index = cells[5].find("SI") + 100
         print("---- Debug: HTML Around 'SI' ----")
         print(cells[5][start_index:end_index])
         print("---------------------------------")
-        
-    d['history'] = [6]  # Verlauf
+
+    d["history"] = [6]  # Verlauf
 
     # Extract history if available
-    history_cells = result.find_all('td')[8:]
+    history_cells = result.find_all("td")[8:]
     if history_cells:
         for i in range(0, len(history_cells), 2):
             event = history_cells[i].text.strip()
             date = history_cells[i + 1].text.strip()
-            d['history'].append((event, date))
+            d["history"].append((event, date))
 
     return d
 
+
 def get_companies_in_searchresults(html):
-    soup = BeautifulSoup(html, 'html.parser')
-    grid = soup.find('table', role='grid')
+    soup = BeautifulSoup(html, "html.parser")
+    grid = soup.find("table", role="grid")
 
     results = []
-    for result in grid.find_all('tr'):
-        a = result.get('data-ri')
+    for result in grid.find_all("tr"):
+        a = result.get("data-ri")
         if a is not None:
             d = parse_result(result)
             results.append(d)
     return results
+
 
 def save_to_excel(companies, filepath):
     # Überprüfen, ob die Datei existiert, ansonsten eine neue erstellen
@@ -137,70 +141,85 @@ def save_to_excel(companies, filepath):
         workbook = openpyxl.Workbook()
         sheet = workbook.active
         # Header einfügen
-        sheet.append(["Firmenname", "Gericht", "Sitz", "Status", "Handelsregister-Nummer", "Dokumente", "Verlauf"])
+        sheet.append(
+            [
+                "Firmenname",
+                "Gericht",
+                "Sitz",
+                "Status",
+                "Handelsregister-Nummer",
+                "Dokumente",
+                "Verlauf",
+            ]
+        )
 
     # Füge die Firmendaten zur Excel-Datei hinzu
     for company in companies:
-        sheet.append([
-            company.get("name", ""),
-            company.get("court", ""),
-            company.get("state", ""),
-            company.get("status", ""),
-            company.get("documents", ""),
-           # " | ".join([f"{event[0]} am {event[1]}" for event in company.get("history", [])])
-        ])
+        sheet.append(
+            [
+                company.get("name", ""),
+                company.get("court", ""),
+                company.get("state", ""),
+                company.get("status", ""),
+                company.get("documents", ""),
+                # " | ".join([f"{event[0]} am {event[1]}" for event in company.get("history", [])])
+            ]
+        )
 
     workbook.save(filepath)
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description='A handelsregister CLI')
+    parser = argparse.ArgumentParser(description="A handelsregister CLI")
     parser.add_argument(
         "-d",
         "--debug",
         help="Enable debug mode and activate logging",
-        action="store_true"
+        action="store_true",
     )
     parser.add_argument(
         "-f",
         "--force",
         help="Force a fresh pull and skip the cache",
-        action="store_true"
+        action="store_true",
     )
     parser.add_argument(
         "-s",
         "--schlagwoerter",
         help="Search for the provided keywords",
-        default="Kloepfel Consulting GmbH"
+        default="Kloepfel Consulting GmbH",
     )
     parser.add_argument(
         "-so",
         "--schlagwortOptionen",
         help="Keyword options: all=contain all keywords; min=contain at least one keyword; exact=contain the exact company name.",
         choices=["all", "min", "exact"],
-        default="exact"
+        default="exact",
     )
     parser.add_argument(
         "-o",
         "--output",
         help="Path to the output Excel file",
-        default="handelsregister_result.xlsx"
+        default="handelsregister_result.xlsx",
     )
     args = parser.parse_args()
 
     if args.debug:
         import logging
+
         logger = logging.getLogger("mechanize")
         logger.addHandler(logging.StreamHandler(sys.stdout))
         logger.setLevel(logging.DEBUG)
 
     return args
 
+
 if __name__ == "__main__":
     args = parse_args()
     h = HandelsRegister(args)
     h.open_startpage()
     companies = h.search_company()
-    
+
     if companies:
         save_to_excel(companies, args.output)
         print(f"Ergebnisse wurden in der Datei {args.output} gespeichert.")
